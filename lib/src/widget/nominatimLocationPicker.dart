@@ -13,15 +13,18 @@ class NominatimLocationPicker extends StatefulWidget {
     this.awaitingForLocation = "Awaiting for you current location",
     this.customMarkerIcon,
     this.customMapLayer,
+    this.location,
   });
 
   final String searchHint;
   final String awaitingForLocation;
+
   //
   final TileLayerOptions customMapLayer;
 
   //
   final Widget customMarkerIcon;
+  final LatLng location;
 
   @override
   _NominatimLocationPickerState createState() =>
@@ -45,6 +48,10 @@ class _NominatimLocationPickerState extends State<NominatimLocationPicker> {
 
   LatLng _point;
 
+  static final _defaultLocation = LatLng(0.0009845, 109.3222122);
+
+  LatLng get _location => widget.location;
+
   @override
   void dispose() {
     _ctrlSearch.dispose();
@@ -54,24 +61,23 @@ class _NominatimLocationPickerState extends State<NominatimLocationPicker> {
   @override
   void initState() {
     super.initState();
-    _getCurrentLocation();
+    _point = _location ?? _defaultLocation;
     _markers = [
       /*
       --- manage marker
     */
       Marker(
-        width: 50.0,
-        height: 50.0,
-        point: new LatLng(0.0, 0.0),
-        builder: (ctx) => new Container(
-            child: widget.customMarkerIcon == null
-                ? Icon(
-                    Icons.location_on,
-                    size: 50.0,
-                  )
-                : widget.customMarkerIcon),
+        width: 80.0,
+        height: 80.0,
+        point: _point,
+        builder: (ctx) => _buildMarkerIcon(),
       )
     ];
+    if (_location == null) {
+      _getCurrentLocation();
+    } else {
+      _setupExistingLocation();
+    }
   }
 
   void _changeAppBar() {
@@ -81,6 +87,16 @@ class _NominatimLocationPickerState extends State<NominatimLocationPicker> {
     setState(() {
       _isSearching = !_isSearching;
     });
+  }
+
+  Widget _buildMarkerIcon() {
+    return new Container(
+        child: widget.customMarkerIcon == null
+            ? Icon(
+                Icons.location_on,
+                size: 50.0,
+              )
+            : widget.customMarkerIcon);
   }
 
   _getCurrentLocation() {
@@ -101,6 +117,15 @@ class _NominatimLocationPickerState extends State<NominatimLocationPicker> {
     });
   }
 
+  _setupExistingLocation() {
+    _currentPosition = Position(
+      longitude: widget.location.longitude,
+      latitude: widget.location.latitude,
+    );
+    _getCurrentLocationMarker();
+    _getCurrentLocationDesc();
+  }
+
   _getCurrentLocationMarker() {
     /*
     --- Função responsável por atualizar o marcador para a localização atual do usuário
@@ -112,14 +137,9 @@ class _NominatimLocationPickerState extends State<NominatimLocationPicker> {
       _markers[0] = Marker(
         width: 80.0,
         height: 80.0,
-        point: LatLng(_currentPosition.latitude, _currentPosition.longitude),
-        builder: (ctx) => new Container(
-            child: widget.customMarkerIcon == null
-                ? Icon(
-                    Icons.location_on,
-                    size: 50.0,
-                  )
-                : widget.customMarkerIcon),
+        // point: LatLng(_currentPosition.latitude, _currentPosition.longitude),
+        point: _point,
+        builder: (ctx) => _buildMarkerIcon(),
       );
     });
   }
@@ -156,7 +176,7 @@ class _NominatimLocationPickerState extends State<NominatimLocationPicker> {
 
   _buildAppbar(bool _isResult) {
     /*
-    --- Widget responsável constução da appbar customizada . 
+    --- Widget responsável constução da appbar customizada .
   */
     return new AppBar(
       elevation: 0,
@@ -186,7 +206,7 @@ class _NominatimLocationPickerState extends State<NominatimLocationPicker> {
 
   _buildTextField(bool _isResult) {
     /*
-    --- Responsável constução do textfield de pesquisa . 
+    --- Responsável constução do textfield de pesquisa .
   */
     return Card(
         elevation: 4,
@@ -232,7 +252,7 @@ class _NominatimLocationPickerState extends State<NominatimLocationPicker> {
 
   Widget mapContext(BuildContext context) {
     /*
-    --- Widget responsável pela representação cartográfica da região, assim como seu ponto no espaço. 
+    --- Widget responsável pela representação cartográfica da região, assim como seu ponto no espaço.
   */
     while (_currentPosition == null) {
       return new Center(
@@ -246,12 +266,30 @@ class _NominatimLocationPickerState extends State<NominatimLocationPicker> {
       mapController: _mapController,
       markers: _markers,
       customMapLayer: widget.customMapLayer,
+      onTap: (point) async {
+        dynamic res = await NominatimService()
+            .getAddressLatLng("${point.latitude} ${point.longitude}");
+        setState(() {
+          _addresses = res;
+          _lat = point.latitude;
+          _lng = point.longitude;
+          _point = LatLng(_lat, _lng);
+          retorno = {
+            'latlng': _point,
+            'state': _addresses[0]['state'],
+            'desc':
+                "${_addresses[0]['state']}, ${_addresses[0]['city']}, ${_addresses[0]['suburb']}, ${_addresses[0]['neighbourhood']}, ${_addresses[0]['road']}"
+          };
+          _desc = _addresses[0]['description'];
+        });
+      },
+      buildMarkerIcon: _buildMarkerIcon(),
     );
   }
 
   Widget _buildBody(BuildContext context) {
     /*
-    --- Widget responsável constução da página como um todo. 
+    --- Widget responsável constução da página como um todo.
   */
     return new Stack(
       children: <Widget>[
@@ -265,7 +303,7 @@ class _NominatimLocationPickerState extends State<NominatimLocationPicker> {
 
   Widget _buildDescriptionCard() {
     /*
-    --- Widget responsável constução das descrições de um determinado local. 
+    --- Widget responsável constução das descrições de um determinado local.
   */
     return new Positioned(
       bottom: MediaQuery.of(context).size.width * 0.05,
@@ -307,7 +345,7 @@ class _NominatimLocationPickerState extends State<NominatimLocationPicker> {
 
   floatingActionButton() {
     /*
-    --- Widget responsável pelo envio das coordenadas LatLong para serem utilizadas por terceiros . 
+    --- Widget responsável pelo envio das coordenadas LatLong para serem utilizadas por terceiros .
   */
     var width = MediaQuery.of(context).size.width;
     var height = MediaQuery.of(context).size.height;
@@ -322,10 +360,10 @@ class _NominatimLocationPickerState extends State<NominatimLocationPicker> {
           child: FloatingActionButton(
               child: Icon(Icons.arrow_forward),
               onPressed: () {
-                setState(() {
-                  _point = LatLng(
-                      _currentPosition.latitude, _currentPosition.longitude);
-                });
+                // setState(() {
+                //   _point = LatLng(
+                //       _currentPosition.latitude, _currentPosition.longitude);
+                // });
                 Navigator.pop(context, retorno);
               }),
         ),
@@ -335,7 +373,7 @@ class _NominatimLocationPickerState extends State<NominatimLocationPicker> {
 
   Widget searchOptions() {
     /*
-    --- Widget responsável pela exibição tela de exibição de um conjunto de resultados da pesquisa. 
+    --- Widget responsável pela exibição tela de exibição de um conjunto de resultados da pesquisa.
   */
     return new WillPopScope(
       onWillPop: () async => onWillpop(), //Bloquear o retorno
@@ -392,7 +430,7 @@ class _NominatimLocationPickerState extends State<NominatimLocationPicker> {
 
   _buildLocationCard(String text) {
     /*
-    --- Widget responsável constução individual dos resultados de uma pesquisa . 
+    --- Widget responsável constução individual dos resultados de uma pesquisa .
   */
     return new Row(
       mainAxisAlignment: MainAxisAlignment.center,
