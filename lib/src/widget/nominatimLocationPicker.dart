@@ -33,9 +33,10 @@ class NominatimLocationPicker extends StatefulWidget {
 
 class _NominatimLocationPickerState extends State<NominatimLocationPicker> {
   Map retorno;
-
+  static Color primaryColor = Color(0xFFCB2240);
   List _addresses = List();
-  Color _color = Colors.black;
+
+  //Color _color = primaryColor;
   TextEditingController _ctrlSearch = TextEditingController();
   Position _currentPosition;
   String _desc;
@@ -184,8 +185,8 @@ class _NominatimLocationPickerState extends State<NominatimLocationPicker> {
       primary: true,
       title: _buildTextField(_isResult),
       leading: IconButton(
-        icon:
-            Icon(_isResult ? Icons.close : Icons.arrow_back_ios, color: _color),
+        icon: Icon(_isResult ? Icons.close : Icons.arrow_back_ios,
+            color: primaryColor),
         onPressed: () {
           _isSearching
               ? setState(() {
@@ -220,34 +221,44 @@ class _NominatimLocationPickerState extends State<NominatimLocationPicker> {
               child: Padding(
                 padding: EdgeInsets.fromLTRB(10, 0, 5, 0),
                 child: TextFormField(
-                    controller: _ctrlSearch,
-                    decoration: InputDecoration(
-                        hintText: widget.searchHint,
-                        border: InputBorder.none,
-                        hintStyle: TextStyle(color: Colors.grey))),
+                  controller: _ctrlSearch,
+                  decoration: InputDecoration(
+                    hintText: widget.searchHint,
+                    border: InputBorder.none,
+                    hintStyle: TextStyle(color: Colors.grey),
+                  ),
+                  keyboardType: TextInputType.text,
+                  textInputAction: TextInputAction.search,
+                  onFieldSubmitted: (value) {
+                    _startSearchLocation(_isResult);
+                  },
+                ),
               ),
             ),
             IconButton(
-              icon: Icon(Icons.search, color: _color),
-              onPressed: () async {
-                FocusScopeNode currentFocus = FocusScope.of(context);
-                if (!currentFocus.hasPrimaryFocus) {
-                  currentFocus.unfocus();
-                }
-                _isResult == false
-                    ? _changeAppBar()
-                    : setState(() {
-                        _isSearching = true;
-                      });
-                dynamic res =
-                    await NominatimService().getAddressLatLng(_ctrlSearch.text);
-                setState(() {
-                  _addresses = res;
-                });
+              icon: Icon(Icons.search, color: primaryColor),
+              onPressed: () {
+                _startSearchLocation(_isResult);
               },
             ),
           ],
         ));
+  }
+
+  void _startSearchLocation(bool isResult) async {
+    FocusScopeNode currentFocus = FocusScope.of(context);
+    if (!currentFocus.hasPrimaryFocus) {
+      currentFocus.unfocus();
+    }
+    isResult == false
+        ? _changeAppBar()
+        : setState(() {
+            _isSearching = true;
+          });
+    dynamic res = await NominatimService().getAddressLatLng(_ctrlSearch.text);
+    setState(() {
+      _addresses = res;
+    });
   }
 
   Widget mapContext(BuildContext context) {
@@ -331,7 +342,7 @@ class _NominatimLocationPickerState extends State<NominatimLocationPicker> {
                           reverse: false,
                           child: AutoSizeText(
                             _desc == null ? widget.awaitingForLocation : _desc,
-                            style: TextStyle(fontSize: 20),
+                            style: TextStyle(fontSize: 14),
                             textAlign: TextAlign.start,
                           ),
                         )))),
@@ -358,12 +369,9 @@ class _NominatimLocationPickerState extends State<NominatimLocationPicker> {
         width: width * 0.15,
         child: FittedBox(
           child: FloatingActionButton(
+              backgroundColor: primaryColor,
               child: Icon(Icons.arrow_forward),
               onPressed: () {
-                // setState(() {
-                //   _point = LatLng(
-                //       _currentPosition.latitude, _currentPosition.longitude);
-                // });
                 Navigator.pop(context, retorno);
               }),
         ),
@@ -448,7 +456,7 @@ class _NominatimLocationPickerState extends State<NominatimLocationPicker> {
                   padding: EdgeInsets.all(15),
                   child: AutoSizeText(
                     text,
-                    style: TextStyle(fontSize: 20),
+                    style: TextStyle(fontSize: 14),
                     textAlign: TextAlign.center,
                   ))),
         ),
