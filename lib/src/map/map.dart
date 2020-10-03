@@ -12,6 +12,8 @@ class MapPage extends StatefulWidget {
     this.isNominatim = true,
     this.apiKey,
     this.customMapLayer,
+    this.onTap,
+    this.buildMarkerIcon,
   }) : super(key: key);
   final List<Marker> markers;
   final double lat;
@@ -20,17 +22,35 @@ class MapPage extends StatefulWidget {
   final bool isNominatim;
   final String apiKey;
   final TileLayerOptions customMapLayer;
+  final Function(LatLng) onTap;
+  final Widget buildMarkerIcon;
 
   @override
   _MapPageState createState() => _MapPageState();
 }
 
 class _MapPageState extends State<MapPage> {
+  //Marker marker;
+  List<Marker> markers;
   Widget body(BuildContext context) {
     return new FlutterMap(
       mapController: widget.mapController,
       options: MapOptions(
-          center: LatLng(widget.lat, widget.lng), zoom: 13, maxZoom: 18),
+        center: LatLng(widget.lat, widget.lng),
+        zoom: 13,
+        maxZoom: 18,
+        onTap: (point){
+          widget.onTap(point);
+          setState(() {
+            markers[0] = Marker(
+              width: 80.0,
+              height: 80.0,
+              point: point,
+              builder: (ctx) => widget.buildMarkerIcon,
+            );
+          });
+        },
+      ),
       layers: [
         widget.isNominatim
             ? widget.customMapLayer == null
@@ -51,7 +71,8 @@ class _MapPageState extends State<MapPage> {
                   )
                 : widget.customMapLayer,
         MarkerLayerOptions(
-          markers: widget.markers,
+          // markers: widget.markers,
+          markers: markers
         ),
       ],
     );
@@ -62,5 +83,11 @@ class _MapPageState extends State<MapPage> {
     return Container(
       child: body(context),
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    markers = widget.markers;
   }
 }
